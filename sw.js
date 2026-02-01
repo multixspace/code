@@ -1,4 +1,4 @@
-const CACHE_NAME = 'multix-code-v1';
+const CACHE_NAME = 'multix-terminal-v1';
 const ASSETS = [
     '/',
     '/index.html',
