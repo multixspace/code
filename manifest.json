@@ -1,6 +1,6 @@
 {
-  "name": "MULTIX Code",
-  "short_name": "Code",
+  "name": "MULTIX Development Terminal",
+  "short_name": "Terminal",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1e1e1e",
