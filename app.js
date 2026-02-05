@@ -2,81 +2,87 @@
 // let — змінна, яку можна переприсвоювати.
 // Ніколи не використовуй var (це старий, небезпечний стиль).
 
-// Зберігаємо посилання на елементи DOM, щоб не шукати їх щоразу (кешування DOM).
 const UI = {
     editor: document.getElementById('code-editor'),
-    lines: document.getElementById('line-numbers'),
     btnMode: document.getElementById('btn-mode'),
     console: document.getElementById('console-output')
 };
 
-// State (Стан) — це "мозок" програми. Дані живуть тут. 
-// UI лише відображає цей стан.
 const State = {
     isEditMode: false,
-    code: "; MULTIX Asm Entry\n\n_start:\n    NOP"
+    // Додамо трохи помилкового коду для тесту
+    code: "; MULTIX Sys Asm\n\n_start:\n    MOV x1, 10\n    ERR_CMD x2, 0 ; Помилка тут\n    RET"
 };
 
-// Головна функція ініціалізації
 function init() {
-    // Встановлюємо початкове значення
     UI.editor.value = State.code;
-    updateLines();
-
-    // Event Listeners (Слухачі подій)
-    // Це асинхронність. Ми кажемо: "Коли станеться клік, виклич цю функцію".
     UI.btnMode.addEventListener('click', toggleMode);
     
-    // Коли вводимо текст -> оновити номери рядків
-    UI.editor.addEventListener('input', updateLines);
+    log("Terminal ready.", "sys");
     
-    // Синхронізація скролу: крутимо текст -> крутяться і номери
-    UI.editor.addEventListener('scroll', () => {
-        UI.lines.scrollTop = UI.editor.scrollTop;
-    });
-
-    log("Terminal initialized.");
+    // Імітація: через 1 секунду "компілятор" знаходить помилку
+    setTimeout(() => {
+        // Уявімо, що компілятор повернув: Error at char 35
+        reportError("Unknown instruction 'ERR_CMD'", 35, 42); 
+    }, 1000);
 }
 
 function toggleMode() {
-    // Інвертуємо булеве значення (true -> false, false -> true)
     State.isEditMode = !State.isEditMode;
-    
-    // Змінюємо властивість DOM елемента
-    // readOnly = true означає, що писати не можна
     UI.editor.readOnly = !State.isEditMode;
     
     if (State.isEditMode) {
         UI.btnMode.textContent = "Save";
-        UI.btnMode.style.background = "var(--accent)"; // Доступ до CSS змінних через JS
-        log("Mode: EDIT");
+        UI.btnMode.style.borderColor = "var(--accent)";
+        UI.btnMode.style.background = "var(--accent)";
+        UI.btnMode.style.color = "white";
     } else {
         UI.btnMode.textContent = "Edit";
-        UI.btnMode.style.background = "";
-        log("Mode: READ-ONLY (Saved)");
-        // Тут ми потім додамо відправку State.code на Dev OS
+        UI.btnMode.style = ""; // Скидаємо стилі до дефолтних (CSS)
+        log("Saved to memory.", "sys");
     }
 }
 
-function updateLines() {
-    // split('\n') розбиває текст на масив рядків по символу ентера.
-    // .length дає кількість елементів.
-    const count = UI.editor.value.split('\n').length;
+// Функція стрибка до коду
+// start - індекс початку символу, end - індекс кінця
+function jumpToCode(start, end) {
+    // 1. Фокусуємо редактор
+    UI.editor.focus();
     
-    // Array(count).fill(0) створює масив [0,0,0...] потрібної довжини.
-    // .map((_, i) => i + 1) перетворює його на [1, 2, 3...].
-    // .join('<br>') склеює все в один HTML рядок з переносами.
-    UI.lines.innerHTML = Array(count).fill(0).map((_, i) => i + 1).join('<br>');
+    // 2. Виділяємо текст (native browser selection)
+    // Це найпростіший і найнадійніший спосіб підсвітити код без складних бібліотек
+    UI.editor.setSelectionRange(start, end);
+    
+    // 3. Скролимо до виділення (щоб не шукати очима)
+    // blur і focus іноді допомагають браузеру "стрибнути"
+    UI.editor.blur();
+    UI.editor.focus();
 }
 
-function log(msg) {
-    const time = new Date().toLocaleTimeString();
-    // `` (backticks) — шаблонні рядки, дозволяють вставляти змінні через ${}
-    const html = `<div><span style="color:var(--accent)">[${time}]</span> ${msg}</div>`;
+function reportError(msg, start, end) {
+    const div = document.createElement('div');
+    div.className = "log-item log-err";
     
-    // insertAdjacentHTML швидше і безпечніше, ніж innerHTML += ...
-    UI.console.insertAdjacentHTML('beforeend', html);
+    // Створюємо текст помилки
+    div.innerHTML = `[ERROR] ${msg} `;
+    
+    // Створюємо "посилання" (кнопку)
+    const link = document.createElement('span');
+    link.className = "err-link";
+    link.textContent = `@jump`;
+    
+    // При кліку викликаємо функцію стрибка
+    link.onclick = () => jumpToCode(start, end);
+    
+    div.appendChild(link);
+    UI.console.appendChild(div);
 }
 
-// Запускаємо init(), коли браузер повністю завантажив DOM дерево.
+function log(msg, type="") {
+    const div = document.createElement('div');
+    div.className = `log-item log-${type}`;
+    div.textContent = `> ${msg}`;
+    UI.console.appendChild(div);
+}
+
 document.addEventListener('DOMContentLoaded', init);
