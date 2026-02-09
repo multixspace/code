@@ -31,6 +31,14 @@ function init() {
     UI.navFiles.addEventListener('click', () => switchSidebar('files'));
     UI.navAI.addEventListener('click', () => switchSidebar('ai'));
     UI.navTheme.addEventListener('click', toggleTheme);
+
+    // Кнопка в сайдбарі для з'єднання (D - Debug)
+    document.getElementById('btn-debug').addEventListener('click', connectDevice);
+    
+    // Перевірка підтримки WebUSB
+    if (!navigator.usb) {
+        logError("WebUSB not supported in this browser. Use Chrome/Edge.");
+    }
 }
 
 // 1. Логіка "Без вкладок"
@@ -116,6 +124,39 @@ function showContextTabs(filesArray) {
         tab.onclick = () => openFile(file);
         UI.contextTabs.appendChild(tab);
     });
+}
+
+let device = null;
+
+async function connectDevice() {
+    try {
+        log("Searching for Milk-V Jupiter...");
+        
+        // Ми поки не знаємо точний VID SpacemiT, тому просимо показати ВСІ пристрої.
+        // Коли дізнаємось VID, впишемо сюди: { vendorId: 0xXXXX }
+        device = await navigator.usb.requestDevice({ filters: [] });
+        
+        await device.open();
+        
+        // Виводимо інформацію про знахідку
+        const info = `Connected: ${device.productName || 'Unknown Device'} 
+                      (VID: 0x${device.vendorId.toString(16)}, PID: 0x${device.productId.toString(16)})`;
+        log(info);
+        
+        if (device.configuration === null) {
+            await device.selectConfiguration(1);
+        }
+        
+        await device.claimInterface(0);
+        log("Interface claimed. Ready to talk to K1 Mask ROM.", "sys");
+        
+        // Оновлюємо статус в UI
+        document.getElementById('status-indicator').classList.add('connected');
+        document.getElementById('status-indicator').title = "Milk-V Jupiter Connected";
+
+    } catch (err) {
+        logError(`Connection failed: ${err.message}`);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', init);
